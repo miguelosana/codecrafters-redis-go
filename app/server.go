@@ -27,14 +27,16 @@ func main() {
 func requestHandler(conn net.Conn) {
 	log.Print("Handling request")
 	buffer := make([]byte, 1024)
-	_, err := conn.Read(buffer)
+	n, err := conn.Read(buffer)
 	if err != nil {
 		log.Fatal(err)
 	}
-	command := string(buffer)
+	log.Printf("Read %d bytes", n)
+	command := string(buffer[:n-1])
 	if command == "ping" {
+		log.Println("PONG")
 		conn.Write([]byte("+PONG\r\n"))
 	}
-	log.Print(string(buffer))
+	log.Printf("%v", command)
 	conn.Close()
 }
