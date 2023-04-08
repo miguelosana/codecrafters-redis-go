@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -32,8 +33,8 @@ func requestHandler(conn net.Conn) {
 		log.Fatal(err)
 	}
 	log.Printf("Read %d bytes", n)
-	command := string(buffer[:n-1])
-	if command == "ping" {
+	command := strings.Split(string(buffer[:n-1]), "\r\n")
+	if strings.TrimSpace(command[2]) == "ping" {
 		log.Println("PONG")
 		conn.Write([]byte("+PONG\r\n"))
 	}
