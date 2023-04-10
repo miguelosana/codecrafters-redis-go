@@ -13,6 +13,7 @@ import (
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
+	dataStore := make(map[string]string)
 
 	l, err := net.Listen("tcp", "0.0.0.0:6379")
 	if err != nil {
@@ -26,12 +27,12 @@ func main() {
 			log.Fatal(err)
 		}
 
-		go requestHandler(conn)
+		go requestHandler(conn, dataStore)
 
 	}
 }
 
-func requestHandler(conn net.Conn) {
+func requestHandler(conn net.Conn, dataStore map[string]string) {
 	log.Print("Handling request")
 	decoder := redis.NewDecoder(conn)
 	for {
@@ -46,6 +47,26 @@ func requestHandler(conn net.Conn) {
 			arr := respValue.Array()
 			if strings.ToUpper(arr[0].String()) == "PING" {
 				conn.Write([]byte("+PONG\r\n"))
+			} else if strings.ToUpper(arr[0].String()) == "ECHO" {
+				var response []byte
+				response = append(response, '+')
+				response = append(response, arr[1].String()...)
+				response = append(response, "\r\n"...)
+				_, err := conn.Write(response)
+				if err != nil {
+					log.Fatal(err)
+				}
+			} else if strings.ToUpper(arr[0].String()) == "COMMAND" {
+				conn.Write([]byte("+OK\r\n"))
+			} else if strings.ToUpper(arr[0].String()) == "SET" {
+				dataStore[arr[1].String()] = arr[2].String()
+				conn.Write([]byte("+OK\r\n"))
+			} else if strings.ToUpper(arr[0].String()) == "GET" {
+				var response []byte
+				response = append(response, '+')
+				response = append(response, dataStore[arr[1].String()]...)
+				response = append(response, "\r\n"...)
+				conn.Write(response)
 			}
 
 		}
