@@ -6,6 +6,8 @@ import (
 	"net"
 	"os"
 	"strings"
+
+	"example.com/redis/app/redis"
 )
 
 func main() {
@@ -17,27 +19,35 @@ func main() {
 		fmt.Println("Failed to bind to port 6379")
 		os.Exit(1)
 	}
-	conn, err := l.Accept()
-	if err != nil {
-		fmt.Println("Error accepting connection: ", err.Error())
-		os.Exit(1)
+	defer l.Close()
+	for {
+		conn, err := l.Accept()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		go requestHandler(conn)
+
 	}
-	requestHandler(conn)
 }
 
 func requestHandler(conn net.Conn) {
 	log.Print("Handling request")
-	buffer := make([]byte, 1024)
-	n, err := conn.Read(buffer)
-	if err != nil {
-		log.Fatal(err)
+	decoder := redis.NewDecoder(conn)
+	for {
+		respValue, _, err := decoder.Decode()
+		if err != nil {
+			log.Fatal(err)
+
+		}
+		log.Print("Got something....")
+		log.Print(string(respValue.Bytes()))
+		if len(respValue.Array()) > 0 {
+			arr := respValue.Array()
+			if strings.ToUpper(arr[0].String()) == "PING" {
+				conn.Write([]byte("+PONG\r\n"))
+			}
+
+		}
 	}
-	log.Printf("Read %d bytes", n)
-	command := strings.Split(string(buffer[:n-1]), "\r\n")
-	if strings.TrimSpace(command[2]) == "ping" {
-		log.Println("PONG")
-		conn.Write([]byte("+PONG\r\n"))
-	}
-	log.Printf("%v", command)
-	conn.Close()
 }
