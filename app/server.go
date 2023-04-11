@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -28,6 +29,7 @@ func main() {
 		}
 
 		go requestHandler(conn, dataStore)
+		log.Printf("connection closed")
 
 	}
 }
@@ -38,7 +40,11 @@ func requestHandler(conn net.Conn, dataStore map[string]string) {
 	for {
 		respValue, _, err := decoder.Decode()
 		if err != nil {
-			log.Fatal(err)
+			if err == io.EOF {
+				conn.Close()
+			}
+			log.Print(err)
+			return
 
 		}
 		log.Print("Got something....")
